@@ -1,0 +1,65 @@
+heat_template_version: 2015-04-30
+
+description: Lab 3 - Simple server for Java application deployment
+
+parameters:
+  key_name:
+    type: string
+    description: SSH key pair for access
+    default: Ahmad
+  
+  server_name:
+    type: string
+    description: Name of the server
+    default: lab3-java-server
+  
+  flavor_size:
+    type: string
+    description: Instance size
+    default: m1.small
+
+resources:
+  java_app_server:
+    type: OS::Nova::Server
+    properties:
+      name: { get_param: server_name }
+      image: ununtu-22.04
+      flavor: { get_param: flavor_size }
+      key_name: { get_param: key_name }
+      networks:
+        - network: sutdents-net
+      security_groups:
+        - students-general
+      user_data: |
+        #!/bin/bash
+        echo "=== Lab 3 Server Initialization ==="
+        date
+        
+        # System update
+        apt-get update
+        apt-get upgrade -y
+        
+        # Install Java for application
+        apt-get install -y openjdk-17-jre
+        
+        # Create application directory
+        mkdir -p /opt/lab3-app
+        chown ubuntu:ubuntu /opt/lab3-app
+        
+        echo "=== Setup Complete ==="
+        echo "Java installed: $(java -version 2>&1 | head -1)"
+        echo "Server IP: $(hostname -I | awk '{print $1}')"
+        date
+
+outputs:
+  server_ip:
+    description: IP address for SSH access
+    value: { get_attr: [java_app_server, first_address] }
+  
+  ssh_command:
+    description: Command to connect via SSH
+    value: { str_replace: { template: "ssh -i ~/.ssh/id_rsa ubuntu@IP", params: { IP: { get_attr: [java_app_server, first_address] } } } }
+  
+  deployment_status:
+    description: Deployment status message
+    value: "Lab 3 infrastructure deployed successfully"
